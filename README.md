@@ -6,6 +6,8 @@
 
 Verify what existed, when, and who registered it — directly from the chain.
 
+**SPDX-Anchor: [anchorregistry.ai/AR-2026-0000001](https://anchorregistry.ai/AR-2026-0000001)**
+
 ---
 
 ## How it works
