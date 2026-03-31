@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: BUSL-1.1
+# DAPX-Anchor: anchorregistry.ai/TBD
+"""
+anchorregistry — Trustless Python client for the AnchorRegistry smart contract.
+
+Reads provenance data directly from on-chain events via RPC with zero
+dependency on AnchorRegistry infrastructure.
+"""
+
+from anchorregistry.client import (
+    get_by_arid,
+    get_by_registrant,
+    get_by_tree,
+    get_by_type,
+    get_all,
+    verify,
+    watermark,
+)
+from anchorregistry.config import configure
+from anchorregistry.utils import to_dataframe
+from anchorregistry.types import ARTIFACT_TYPE_MAP
+from anchorregistry.abi import READ_ABI
+from anchorregistry.constants import CONTRACT_ADDRESS, DEPLOY_BLOCK
+from anchorregistry.exceptions import AnchorNotFoundError, ConfigurationError
+
+__all__ = [
+    "get_by_arid",
+    "get_by_registrant",
+    "get_by_tree",
+    "get_by_type",
+    "get_all",
+    "verify",
+    "watermark",
+    "configure",
+    "to_dataframe",
+    "ARTIFACT_TYPE_MAP",
+    "READ_ABI",
+    "CONTRACT_ADDRESS",
+    "DEPLOY_BLOCK",
+    "AnchorNotFoundError",
+    "ConfigurationError",
+]

@@ -15,12 +15,6 @@ requires-python = ">=3.11"
 dependencies = [
     "web3>=6.0",
 ]
-
-[project.optional-dependencies]
-analytics = [
-    "pandas",
-]
-
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -33,6 +27,14 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Internet :: WWW/HTTP",
 ]
+
+[project.optional-dependencies]
+analytics = [
+    "pandas",
+]
+
+[tool.setuptools.packages.find]
+include = ["anchorregistry*"]
 
 [project.urls]
 Homepage = "https://anchorregistry.com"
