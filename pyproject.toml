@@ -4,25 +4,37 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anchorregistry"
-version = "0.0.1"
-description = "Deterministic provenance verification for AI and IP artifacts"
+version = "0.1.0"
+description = "Trustless Python client for the AnchorRegistry provenance chain on Base (Ethereum L2)"
 readme = "README.md"
-license = {text = "Apache-2.0"}
+license = {text = "BUSL-1.1"}
 authors = [
-    {name = "Anchor Registry", email = "anchor.registry@gmail.com"}
+    {name = "Ian Moore", email = "icmoore@anchorregistry.com"}
 ]
 requires-python = ">=3.11"
 dependencies = [
     "web3>=6.0",
 ]
+
+[project.optional-dependencies]
+analytics = [
+    "pandas",
+]
+
 classifiers = [
-    "Development Status :: 1 - Planning",
-    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP",
 ]
 
 [project.urls]
 Homepage = "https://anchorregistry.com"
+Documentation = "https://anchorregistry.readthedocs.io"
 Repository = "https://github.com/anchorregistry/ar-python"
