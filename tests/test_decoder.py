@@ -20,20 +20,21 @@ def _make_raw_log(
     manifest_hash="abcdef1234567890",
     parent_ar_id="",
     tree_id="ar-operator-v1",
+    token_commitment=b"\x00" * 32,
     block_number=12345,
     tx_hash="aa" * 32,
 ):
     """Build a mock raw log matching the Anchored event structure."""
     event_sig = Web3.keccak(
-        text="Anchored(string,address,uint8,string,string,string,string,string,string,string,string)"
+        text="Anchored(string,address,uint8,string,string,string,string,string,string,string,string,bytes32)"
     )
     ar_id_topic = Web3.keccak(text=ar_id)
     registrant_topic = HexBytes(bytes.fromhex(registrant[2:].rjust(64, "0")))
     tree_id_topic = Web3.keccak(text=tree_id)
 
     data = encode(
-        ["uint8", "string", "string", "string", "string", "string", "string", "string"],
-        [artifact_type, ar_id, descriptor, title, author, manifest_hash, parent_ar_id, tree_id],
+        ["uint8", "string", "string", "string", "string", "string", "string", "string", "bytes32"],
+        [artifact_type, ar_id, descriptor, title, author, manifest_hash, parent_ar_id, tree_id, token_commitment],
     )
 
     return {
@@ -93,6 +94,17 @@ class TestDecodeEvent:
         log = _make_raw_log(tree_id="my-custom-tree")
         record = _decode_event(log)
         assert record["tree_id"] == "my-custom-tree"
+
+    def test_decodes_token_commitment(self):
+        tc = bytes.fromhex("ab" * 32)
+        log = _make_raw_log(token_commitment=tc)
+        record = _decode_event(log)
+        assert record["token_commitment"] == "0x" + "ab" * 32
+
+    def test_decodes_zero_token_commitment(self):
+        log = _make_raw_log(token_commitment=b"\x00" * 32)
+        record = _decode_event(log)
+        assert record["token_commitment"] == "0x" + "00" * 32
 
     def test_decodes_all_artifact_types(self):
         for t in ArtifactType:
