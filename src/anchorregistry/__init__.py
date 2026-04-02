@@ -15,9 +15,11 @@ from anchorregistry.client import (
     get_all,
     verify,
     watermark,
+    authenticate_anchor,
+    authenticate_tree,
 )
 from anchorregistry.config import configure
-from anchorregistry.utils import to_dataframe
+from anchorregistry.utils import to_dataframe, is_user_initiated
 from anchorregistry.types import ARTIFACT_TYPE_MAP
 from anchorregistry.abi import READ_ABI
 from anchorregistry.constants import CONTRACT_ADDRESS, DEPLOY_BLOCK
@@ -31,8 +33,11 @@ __all__ = [
     "get_all",
     "verify",
     "watermark",
+    "authenticate_anchor",
+    "authenticate_tree",
     "configure",
     "to_dataframe",
+    "is_user_initiated",
     "ARTIFACT_TYPE_MAP",
     "READ_ABI",
     "CONTRACT_ADDRESS",

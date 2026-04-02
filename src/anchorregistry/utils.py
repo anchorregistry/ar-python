@@ -40,6 +40,35 @@ def _address_topic(address: str) -> str:
     return "0x" + address.lower().replace("0x", "").rjust(64, "0")
 
 
+def is_user_initiated(record: dict[str, Any]) -> bool:
+    """Return True if the anchor was initiated by the token holder.
+
+    An anchor is user-initiated when its ``token_commitment`` is non-zero.
+    Governance anchors (VOID, REVIEW, AFFIRMED, RETRACTION) carry
+    ``bytes32(0)`` as a sentinel — enforced by the contract.
+
+    Parameters
+    ----------
+    record:
+        Two-level anchor record dict as returned by any query function.
+
+    Returns
+    -------
+    bool
+        ``True`` if user-initiated (non-zero tokenCommitment).
+        ``False`` for AR governance actions.
+
+    Examples
+    --------
+    >>> from anchorregistry import get_by_arid
+    >>> from anchorregistry.utils import is_user_initiated
+    >>> record = get_by_arid("AR-2026-Pvdp0W5")
+    >>> is_user_initiated(record)
+    True
+    """
+    return record["token_commitment"] != "0x" + "0" * 64
+
+
 def to_dataframe(records: list[dict[str, Any]]) -> Any:
     """Flatten anchor records into a pandas DataFrame.
 

@@ -21,7 +21,7 @@ from anchorregistry.rpc import (
     _fetch_transactions_batch,
     _get_logs,
 )
-from anchorregistry.utils import _address_topic, _build_topic
+from anchorregistry.utils import _address_topic, _build_topic, is_user_initiated
 
 # Artifact types registered via registerTargeted (have a targetArId param).
 _TARGETED_TYPES = {
@@ -337,3 +337,174 @@ def watermark(
 
     prefix = "SPDX-Anchor" if artifact_type in SOFTWARE_TYPES else "DAPX-Anchor"
     return f"{prefix}: anchorregistry.ai/{ar_id}"
+
+
+def authenticate_anchor(
+    ownership_token: str,
+    ar_id: str,
+    rpc_url: str | None = None,
+) -> dict[str, Any]:
+    """Authenticate a single anchor by verifying its tokenCommitment on-chain.
+
+    Computes ``SHA256(ownership_token + ar_id)`` and compares the result
+    against the ``token_commitment`` stored in the on-chain ``Anchored`` event.
+    Governance anchors (VOID, REVIEW, AFFIRMED, RETRACTION) carry
+    ``bytes32(0)`` and are returned as ``authenticated: False`` immediately.
+
+    Parameters
+    ----------
+    ownership_token:
+        UUID-format ownership token generated client-side at registration time.
+        Never transmitted to AnchorRegistry — known only to the token holder.
+    ar_id:
+        The AR-ID to authenticate (e.g. ``"AR-2026-Pvdp0W5"``).
+    rpc_url:
+        Optional RPC URL override.
+
+    Returns
+    -------
+    dict[str, Any]
+        Result dict with keys:
+
+        - ``authenticated`` — bool: True if SHA256 proof matches on-chain commitment.
+        - ``ar_id`` — str: the AR-ID that was checked.
+        - ``token_commitment`` — str: on-chain commitment (``0x``-prefixed bytes32 hex).
+        - ``is_user_initiated`` — bool: False for governance anchors (bytes32(0)).
+        - ``verified`` — bool: same as ``authenticated``.
+
+    Raises
+    ------
+    AnchorNotFoundError
+        If the AR-ID does not exist on-chain.
+
+    Examples
+    --------
+    >>> from anchorregistry import configure, authenticate_anchor
+    >>> configure(network="sepolia")
+    >>> result = authenticate_anchor("b12b3db8-89aa-432a-9d3d-15d628df35fb", "AR-2026-Pvdp0W5")
+    >>> result["authenticated"]
+    True
+    """
+    record = get_by_arid(ar_id, rpc_url=rpc_url)
+    user_initiated = is_user_initiated(record)
+
+    if not user_initiated:
+        return {
+            "authenticated": False,
+            "ar_id": ar_id,
+            "token_commitment": record["token_commitment"],
+            "is_user_initiated": False,
+            "verified": False,
+        }
+
+    pre_image = ownership_token + ar_id
+    computed = "0x" + hashlib.sha256(pre_image.encode()).hexdigest()
+    on_chain = record["token_commitment"]
+    verified = computed == on_chain
+
+    return {
+        "authenticated": verified,
+        "ar_id": ar_id,
+        "token_commitment": on_chain,
+        "is_user_initiated": True,
+        "verified": verified,
+    }
+
+
+def authenticate_tree(
+    ownership_token: str,
+    root_ar_id: str,
+    rpc_url: str | None = None,
+) -> dict[str, Any]:
+    """Authenticate a full tree by verifying ownership and all anchor commitments.
+
+    Two-layer verification:
+
+    **Layer 1 — Tree ownership:**
+    Computes ``SHA256(ownership_token + root_ar_id)`` and compares against
+    ``record["tree_id"]``. Returns ``authenticated: False`` immediately on failure.
+
+    **Layer 2 — Per-anchor initiation:**
+    Calls ``get_by_tree()`` and runs ``authenticate_anchor()`` for each
+    user-initiated anchor. Governance anchors (bytes32(0) commitment) are
+    counted separately and skipped from verification.
+
+    Parameters
+    ----------
+    ownership_token:
+        UUID-format ownership token generated client-side at registration time.
+    root_ar_id:
+        AR-ID of the tree root anchor.
+    rpc_url:
+        Optional RPC URL override.
+
+    Returns
+    -------
+    dict[str, Any]
+        Result dict with keys:
+
+        - ``authenticated`` — bool: True if Layer 1 passes and ``anchors_failed == 0``.
+        - ``tree_id`` — str: human-readable treeId from the root anchor.
+        - ``root_ar_id`` — str: the root AR-ID that was checked.
+        - ``anchor_count`` — int: total anchors in the tree.
+        - ``anchors_verified`` — int: user-initiated anchors whose commitment matched.
+        - ``anchors_failed`` — int: user-initiated anchors whose commitment did not match.
+        - ``governance_count`` — int: governance anchors skipped (bytes32(0)).
+
+    Raises
+    ------
+    AnchorNotFoundError
+        If ``root_ar_id`` does not exist on-chain.
+
+    Examples
+    --------
+    >>> from anchorregistry import configure, authenticate_tree
+    >>> configure(network="sepolia")
+    >>> result = authenticate_tree("b12b3db8-89aa-432a-9d3d-15d628df35fb", "AR-2026-Pvdp0W5")
+    >>> result["authenticated"]
+    True
+    """
+    root_record = get_by_arid(root_ar_id, rpc_url=rpc_url)
+    tree_id = root_record["tree_id"]
+
+    # Layer 1: verify tree ownership — SHA256(ownershipToken + rootArId) == treeId
+    pre_image = ownership_token + root_ar_id
+    computed_tree_id = hashlib.sha256(pre_image.encode()).hexdigest()
+    layer1_pass = computed_tree_id == tree_id
+
+    if not layer1_pass:
+        return {
+            "authenticated": False,
+            "tree_id": tree_id,
+            "root_ar_id": root_ar_id,
+            "anchor_count": 0,
+            "anchors_verified": 0,
+            "anchors_failed": 0,
+            "governance_count": 0,
+        }
+
+    # Layer 2: verify every user-initiated anchor in the tree.
+    tree_records = get_by_tree(tree_id, rpc_url=rpc_url)
+    anchors_verified = 0
+    anchors_failed = 0
+    governance_count = 0
+
+    for anchor in tree_records:
+        if not is_user_initiated(anchor):
+            governance_count += 1
+            continue
+        result = authenticate_anchor(ownership_token, anchor["ar_id"], rpc_url=rpc_url)
+        if result["verified"]:
+            anchors_verified += 1
+        else:
+            anchors_failed += 1
+
+    return {
+        "authenticated": anchors_failed == 0,
+        "tree_id": tree_id,
+        "root_ar_id": root_ar_id,
+        "anchor_count": len(tree_records),
+        "anchors_verified": anchors_verified,
+        "anchors_failed": anchors_failed,
+        "governance_count": governance_count,
+    }

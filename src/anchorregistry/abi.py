@@ -22,7 +22,8 @@ READ_ABI = [
             {"indexed": False, "internalType": "string",            "name": "manifestHash", "type": "string"},
             {"indexed": False, "internalType": "string",            "name": "parentArId",   "type": "string"},
             {"indexed": True,  "internalType": "string",            "name": "treeId",       "type": "string"},
-            {"indexed": False, "internalType": "string",            "name": "treeIdPlain",  "type": "string"},
+            {"indexed": False, "internalType": "string",            "name": "treeIdPlain",      "type": "string"},
+            {"indexed": False, "internalType": "bytes32",           "name": "tokenCommitment",  "type": "bytes32"},
         ],
     },
     # ── registered(arId) → bool ───────────────────────────────────────

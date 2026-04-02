@@ -15,14 +15,15 @@ from anchorregistry.types import ARTIFACT_TYPE_MAP, TYPE_ABI, TYPE_FIELDS
 
 # Non-indexed data field types in Anchored event (in order).
 _EVENT_DATA_TYPES = [
-    "uint8",   # artifactType
-    "string",  # arIdPlain
-    "string",  # descriptor
-    "string",  # title
-    "string",  # author
-    "string",  # manifestHash
-    "string",  # parentArId
-    "string",  # treeIdPlain
+    "uint8",    # artifactType
+    "string",   # arIdPlain
+    "string",   # descriptor
+    "string",   # title
+    "string",   # author
+    "string",   # manifestHash
+    "string",   # parentArId
+    "string",   # treeIdPlain
+    "bytes32",  # tokenCommitment — SHA256(ownershipToken + arId), or bytes32(0) for governance
 ]
 
 
@@ -51,10 +52,15 @@ def _decode_event(raw_log: dict) -> dict[str, Any]:
         manifest_hash,
         parent_ar_id,
         tree_id_plain,
+        token_commitment_bytes,
     ) = values
 
     # Registrant address from indexed topic 2 (last 20 bytes of 32-byte topic).
     registrant = "0x" + raw_log["topics"][2].hex()[-40:]
+
+    # tokenCommitment: bytes32 → 0x-prefixed hex string.
+    # bytes32(0) sentinel = "0x" + "0" * 64 → governance anchor (VOID/REVIEW/AFFIRMED).
+    token_commitment = "0x" + token_commitment_bytes.hex()
 
     return {
         "ar_id": ar_id_plain,
@@ -70,6 +76,7 @@ def _decode_event(raw_log: dict) -> dict[str, Any]:
         "title": title,
         "author": author,
         "tree_id": tree_id_plain,
+        "token_commitment": token_commitment,
         "data": {},
     }
 
