@@ -100,6 +100,28 @@ line = watermark("AR-2026-Pvdp0W5", artifact_type="RESEARCH")
 line = watermark("AR-2026-Pvdp0W5")
 ```
 
+### Authenticate anchor ownership
+```python
+from anchorregistry import authenticate_anchor
+
+result = authenticate_anchor("0xabc123...", "AR-2026-Pvdp0W5")
+print(result["authenticated"])  # True / False
+```
+
+The ownership token (`K`) is a `0x`-prefixed bytes32 hex string generated client-side at registration time via `keccak256(salt)`. It is never transmitted on-chain — only the commitment `keccak256(K || arId)` is stored.
+
+### Authenticate a full tree
+```python
+from anchorregistry import authenticate_tree
+
+result = authenticate_tree("0xabc123...", "AR-2026-Pvdp0W5")
+print(result["authenticated"])      # True if tree ownership + all anchors verified
+print(result["anchors_verified"])   # count of verified user-initiated anchors
+print(result["governance_count"])   # governance anchors (skipped, bytes32(0))
+```
+
+Two-layer verification: Layer 1 checks tree ownership via `keccak256(K || rootArId) == treeId`, Layer 2 verifies every user-initiated anchor's `tokenCommitment` in the tree.
+
 ### Analytics — load into DataFrame
 ```python
 from anchorregistry import get_all, to_dataframe
@@ -158,6 +180,7 @@ Every record follows a consistent two-level structure regardless of artifact typ
     "title":                "DeFiPy GitHub",
     "author":               "Ian Moore",
     "tree_id":              "ar-operator-v1",
+    "token_commitment":     "0x3e2d69...",   # keccak256(K || arId), bytes32(0) for governance
 
     # Type-specific fields — only fields for this artifact type
     "data": {
@@ -227,13 +250,20 @@ Create a `.env` file with your Sepolia RPC endpoint:
 SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/YOUR_KEY
 ```
 
+For authentication integration tests, also set:
+
+```bash
+ANCHOR_OWNERSHIP_TOKEN=0x...   # 0x-prefixed bytes32 hex (keccak256 token)
+ANCHOR_ROOT_AR_ID=AR-2026-...  # root AR-ID for the ownership token
+```
+
 Then run:
 
 ```bash
 set -a && source .env && set +a && python3 -m pytest tests/ -v
 ```
 
-Integration tests in `test_client.py` are automatically skipped when `SEPOLIA_RPC_URL` is not set.
+Integration tests in `test_client.py` are automatically skipped when `SEPOLIA_RPC_URL` is not set. Authentication tests are additionally skipped when `ANCHOR_OWNERSHIP_TOKEN` and `ANCHOR_ROOT_AR_ID` are not set.
 
 ---
 

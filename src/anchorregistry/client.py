@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
+from eth_hash.auto import keccak
+
 from eth_abi import decode as abi_decode
 
 from anchorregistry.decoder import _decode_data_fields, _decode_event
@@ -346,15 +348,16 @@ def authenticate_anchor(
 ) -> dict[str, Any]:
     """Authenticate a single anchor by verifying its tokenCommitment on-chain.
 
-    Computes ``SHA256(ownership_token + ar_id)`` and compares the result
-    against the ``token_commitment`` stored in the on-chain ``Anchored`` event.
-    Governance anchors (VOID, REVIEW, AFFIRMED, RETRACTION) carry
-    ``bytes32(0)`` and are returned as ``authenticated: False`` immediately.
+    Computes ``keccak256(K || arId)`` (paper spec Section 4.2) and compares
+    the result against the ``token_commitment`` stored in the on-chain
+    ``Anchored`` event. Governance anchors (VOID, REVIEW, AFFIRMED, RETRACTION)
+    carry ``bytes32(0)`` and are returned as ``authenticated: False`` immediately.
 
     Parameters
     ----------
     ownership_token:
-        UUID-format ownership token generated client-side at registration time.
+        Ownership token K = keccak256(salt), salt = 32 uniform random bytes.
+        Stored as 0x-prefixed 64-char hex string (bytes32).
         Never transmitted to AnchorRegistry — known only to the token holder.
     ar_id:
         The AR-ID to authenticate (e.g. ``"AR-2026-Pvdp0W5"``).
@@ -366,7 +369,7 @@ def authenticate_anchor(
     dict[str, Any]
         Result dict with keys:
 
-        - ``authenticated`` — bool: True if SHA256 proof matches on-chain commitment.
+        - ``authenticated`` — bool: True if keccak256 proof matches on-chain commitment.
         - ``ar_id`` — str: the AR-ID that was checked.
         - ``token_commitment`` — str: on-chain commitment (``0x``-prefixed bytes32 hex).
         - ``is_user_initiated`` — bool: False for governance anchors (bytes32(0)).
@@ -381,7 +384,7 @@ def authenticate_anchor(
     --------
     >>> from anchorregistry import configure, authenticate_anchor
     >>> configure(network="sepolia")
-    >>> result = authenticate_anchor("b12b3db8-89aa-432a-9d3d-15d628df35fb", "AR-2026-Pvdp0W5")
+    >>> result = authenticate_anchor("0x1a2b3c4d...", "AR-2026-Pvdp0W5")
     >>> result["authenticated"]
     True
     """
@@ -397,8 +400,11 @@ def authenticate_anchor(
             "verified": False,
         }
 
-    pre_image = ownership_token + ar_id
-    computed = "0x" + hashlib.sha256(pre_image.encode()).hexdigest()
+    # Paper spec Section 4.2: Φi = H(K || Ci), H = keccak256
+    # K: bytes32 from 0x-prefixed hex string; Ci: AR-ID as UTF-8 bytes
+    K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+    Ci_bytes = ar_id.encode("utf-8")
+    computed = "0x" + keccak(K_bytes + Ci_bytes).hex()
     on_chain = record["token_commitment"]
     verified = computed == on_chain
 
@@ -421,8 +427,9 @@ def authenticate_tree(
     Two-layer verification:
 
     **Layer 1 — Tree ownership:**
-    Computes ``SHA256(ownership_token + root_ar_id)`` and compares against
-    ``record["tree_id"]``. Returns ``authenticated: False`` immediately on failure.
+    Computes ``keccak256(K || rootArId)`` (paper spec Section 4.2) and compares
+    against ``record["tree_id"]``. Returns ``authenticated: False`` immediately
+    on failure.
 
     **Layer 2 — Per-anchor initiation:**
     Calls ``get_by_tree()`` and runs ``authenticate_anchor()`` for each
@@ -432,7 +439,8 @@ def authenticate_tree(
     Parameters
     ----------
     ownership_token:
-        UUID-format ownership token generated client-side at registration time.
+        Ownership token K = keccak256(salt), salt = 32 uniform random bytes.
+        Stored as 0x-prefixed 64-char hex string (bytes32).
     root_ar_id:
         AR-ID of the tree root anchor.
     rpc_url:
@@ -460,16 +468,18 @@ def authenticate_tree(
     --------
     >>> from anchorregistry import configure, authenticate_tree
     >>> configure(network="sepolia")
-    >>> result = authenticate_tree("b12b3db8-89aa-432a-9d3d-15d628df35fb", "AR-2026-Pvdp0W5")
+    >>> result = authenticate_tree("0x1a2b3c4d...", "AR-2026-Pvdp0W5")
     >>> result["authenticated"]
     True
     """
     root_record = get_by_arid(root_ar_id, rpc_url=rpc_url)
     tree_id = root_record["tree_id"]
 
-    # Layer 1: verify tree ownership — SHA256(ownershipToken + rootArId) == treeId
-    pre_image = ownership_token + root_ar_id
-    computed_tree_id = hashlib.sha256(pre_image.encode()).hexdigest()
+    # Layer 1: verify tree ownership — keccak256(K || R) == treeId
+    # Paper spec Section 4.2: T = H(K || R), H = keccak256
+    K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+    R_bytes = root_ar_id.encode("utf-8")
+    computed_tree_id = "0x" + keccak(K_bytes + R_bytes).hex()
     layer1_pass = computed_tree_id == tree_id
 
     if not layer1_pass:

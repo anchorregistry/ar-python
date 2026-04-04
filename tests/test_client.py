@@ -8,8 +8,9 @@ Authentication tests additionally require:
   ANCHOR_ROOT_AR_ID      — root AR-ID corresponding to that ownership token
 """
 
-import hashlib
 import os
+
+from eth_hash.auto import keccak as _keccak
 
 import pytest
 
@@ -222,8 +223,9 @@ class TestAuthenticateAnchorUnit:
         if is_governance:
             commitment = "0x" + "0" * 64
         else:
-            pre_image = ownership_token + ar_id
-            commitment = "0x" + hashlib.sha256(pre_image.encode()).hexdigest()
+            K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+            Ci_bytes = ar_id.encode("utf-8")
+            commitment = "0x" + _keccak(K_bytes + Ci_bytes).hex()
         return {
             "ar_id": ar_id,
             "registered": True,
@@ -237,7 +239,7 @@ class TestAuthenticateAnchorUnit:
     def test_authenticate_anchor_valid(self, monkeypatch):
         from anchorregistry import authenticate_anchor
 
-        token = "b12b3db8-89aa-432a-9d3d-15d628df35fb"
+        token = "0x" + "ab" * 32
         ar_id = "AR-2026-TestXX"
         record = self._make_record(ar_id, token)
 
@@ -252,8 +254,8 @@ class TestAuthenticateAnchorUnit:
     def test_authenticate_anchor_wrong_token(self, monkeypatch):
         from anchorregistry import authenticate_anchor
 
-        token = "b12b3db8-89aa-432a-9d3d-15d628df35fb"
-        wrong_token = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        token = "0x" + "ab" * 32
+        wrong_token = "0x" + "cd" * 32
         ar_id = "AR-2026-TestXX"
         record = self._make_record(ar_id, token)
 
@@ -267,7 +269,7 @@ class TestAuthenticateAnchorUnit:
     def test_authenticate_anchor_governance(self, monkeypatch):
         from anchorregistry import authenticate_anchor
 
-        token = "b12b3db8-89aa-432a-9d3d-15d628df35fb"
+        token = "0x" + "ab" * 32
         ar_id = "AR-2026-VoidXX"
         record = self._make_record(ar_id, token, is_governance=True)
 
@@ -286,8 +288,9 @@ class TestAuthenticateTreeUnit:
         if is_governance:
             commitment = "0x" + "0" * 64
         else:
-            pre_image = ownership_token + ar_id
-            commitment = "0x" + hashlib.sha256(pre_image.encode()).hexdigest()
+            K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+            Ci_bytes = ar_id.encode("utf-8")
+            commitment = "0x" + _keccak(K_bytes + Ci_bytes).hex()
         return {
             "ar_id": ar_id,
             "registered": True,
@@ -299,13 +302,14 @@ class TestAuthenticateTreeUnit:
         }
 
     def _make_tree_id(self, ownership_token: str, root_ar_id: str) -> str:
-        pre_image = ownership_token + root_ar_id
-        return hashlib.sha256(pre_image.encode()).hexdigest()
+        K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+        R_bytes = root_ar_id.encode("utf-8")
+        return "0x" + _keccak(K_bytes + R_bytes).hex()
 
     def test_authenticate_tree_valid(self, monkeypatch):
         from anchorregistry import authenticate_tree
 
-        token = "b12b3db8-89aa-432a-9d3d-15d628df35fb"
+        token = "0x" + "ab" * 32
         root_ar_id = "AR-2026-RootXX"
         child_ar_id = "AR-2026-ChildX"
         tree_id = self._make_tree_id(token, root_ar_id)
@@ -327,7 +331,7 @@ class TestAuthenticateTreeUnit:
     def test_authenticate_tree_layer1_fails(self, monkeypatch):
         from anchorregistry import authenticate_tree
 
-        token = "b12b3db8-89aa-432a-9d3d-15d628df35fb"
+        token = "0x" + "ab" * 32
         root_ar_id = "AR-2026-RootXX"
         wrong_tree_id = "some-other-tree"  # doesn't match SHA256(token + root_ar_id)
 
@@ -341,7 +345,7 @@ class TestAuthenticateTreeUnit:
     def test_authenticate_tree_governance_skipped(self, monkeypatch):
         from anchorregistry import authenticate_tree
 
-        token = "b12b3db8-89aa-432a-9d3d-15d628df35fb"
+        token = "0x" + "ab" * 32
         root_ar_id = "AR-2026-RootXX"
         void_ar_id = "AR-2026-VoidXX"
         tree_id = self._make_tree_id(token, root_ar_id)
@@ -360,6 +364,9 @@ class TestAuthenticateTreeUnit:
         assert result["anchor_count"] == 2
 
 
+# NOTE: ANCHOR_OWNERSHIP_TOKEN must be a 0x-prefixed bytes32 hex string (keccak256
+# token format). UUID-format tokens from pre-upgrade registrations will fail.
+# Refresh this env var after making a new Sepolia registration post-upgrade.
 @needs_rpc
 @needs_ownership_token
 class TestAuthenticateIntegration:
