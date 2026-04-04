@@ -223,7 +223,7 @@ class TestAuthenticateAnchorUnit:
         if is_governance:
             commitment = "0x" + "0" * 64
         else:
-            K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+            K_bytes = bytes.fromhex(ownership_token[2:])
             Ci_bytes = ar_id.encode("utf-8")
             commitment = "0x" + _keccak(K_bytes + Ci_bytes).hex()
         return {
@@ -280,6 +280,21 @@ class TestAuthenticateAnchorUnit:
         assert result["verified"] is False
         assert result["is_user_initiated"] is False
 
+    def test_authenticate_anchor_token_starting_with_zero(self, monkeypatch):
+        """Regression: token starting with 0x00... must not be corrupted by lstrip."""
+        from anchorregistry import authenticate_anchor
+
+        # Token whose first hex char after "0x" is '0' — triggers lstrip bug if present
+        token = "0x" + "00" + "ab" * 31   # 32 bytes, starts with 0x00
+        ar_id = "AR-2026-TestZZ"
+        record = self._make_record(ar_id, token)
+
+        monkeypatch.setattr("anchorregistry.client.get_by_arid", lambda *a, **kw: record)
+
+        result = authenticate_anchor(token, ar_id)
+        assert result["authenticated"] is True
+        assert result["verified"] is True
+
 
 class TestAuthenticateTreeUnit:
     """Unit tests for authenticate_tree() — no RPC, uses mocked functions."""
@@ -288,7 +303,7 @@ class TestAuthenticateTreeUnit:
         if is_governance:
             commitment = "0x" + "0" * 64
         else:
-            K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+            K_bytes = bytes.fromhex(ownership_token[2:])
             Ci_bytes = ar_id.encode("utf-8")
             commitment = "0x" + _keccak(K_bytes + Ci_bytes).hex()
         return {
@@ -302,7 +317,7 @@ class TestAuthenticateTreeUnit:
         }
 
     def _make_tree_id(self, ownership_token: str, root_ar_id: str) -> str:
-        K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+        K_bytes = bytes.fromhex(ownership_token[2:])
         R_bytes = root_ar_id.encode("utf-8")
         return "0x" + _keccak(K_bytes + R_bytes).hex()
 

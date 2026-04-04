@@ -402,7 +402,7 @@ def authenticate_anchor(
 
     # Paper spec Section 4.2: Φi = H(K || Ci), H = keccak256
     # K: bytes32 from 0x-prefixed hex string; Ci: AR-ID as UTF-8 bytes
-    K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+    K_bytes = bytes.fromhex(ownership_token[2:])
     Ci_bytes = ar_id.encode("utf-8")
     computed = "0x" + keccak(K_bytes + Ci_bytes).hex()
     on_chain = record["token_commitment"]
@@ -477,7 +477,7 @@ def authenticate_tree(
 
     # Layer 1: verify tree ownership — keccak256(K || R) == treeId
     # Paper spec Section 4.2: T = H(K || R), H = keccak256
-    K_bytes = bytes.fromhex(ownership_token.lstrip("0x"))
+    K_bytes = bytes.fromhex(ownership_token[2:])
     R_bytes = root_ar_id.encode("utf-8")
     computed_tree_id = "0x" + keccak(K_bytes + R_bytes).hex()
     layer1_pass = computed_tree_id == tree_id
