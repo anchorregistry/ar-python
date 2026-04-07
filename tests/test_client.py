@@ -17,7 +17,7 @@ import pytest
 from anchorregistry import configure
 from anchorregistry.exceptions import AnchorNotFoundError
 
-TEST_CONTRACT = "0x9E1F48D3C46bc69a540d16511FaA76Add25A8451"
+TEST_CONTRACT = "0xE772B7f4eC4a92109b8b892Add205ede7c850DBa"
 TEST_RPC = os.environ.get("SEPOLIA_RPC_URL")
 TEST_AR_ID = "AR-2026-D5bqN06"  # known anchor on current Sepolia contract
 
@@ -333,6 +333,7 @@ class TestAuthenticateTreeUnit:
         child_record = self._make_record(child_ar_id, token, tree_id)
         record_map = {root_ar_id: root_record, child_ar_id: child_record}
 
+        monkeypatch.setattr("anchorregistry.client.is_sealed", lambda *a, **kw: {"sealed": False, "continuation": ""})
         monkeypatch.setattr("anchorregistry.client.get_by_arid", lambda ar_id, **kw: record_map[ar_id])
         monkeypatch.setattr("anchorregistry.client.get_by_tree", lambda *a, **kw: [root_record, child_record])
 
@@ -351,6 +352,7 @@ class TestAuthenticateTreeUnit:
         wrong_tree_id = "some-other-tree"  # doesn't match SHA256(token + root_ar_id)
 
         root_record = self._make_record(root_ar_id, token, wrong_tree_id)
+        monkeypatch.setattr("anchorregistry.client.is_sealed", lambda *a, **kw: {"sealed": False, "continuation": ""})
         monkeypatch.setattr("anchorregistry.client.get_by_arid", lambda *a, **kw: root_record)
 
         result = authenticate_tree(token, root_ar_id)
@@ -369,6 +371,7 @@ class TestAuthenticateTreeUnit:
         void_record = self._make_record(void_ar_id, token, tree_id, is_governance=True)
         record_map = {root_ar_id: root_record, void_ar_id: void_record}
 
+        monkeypatch.setattr("anchorregistry.client.is_sealed", lambda *a, **kw: {"sealed": False, "continuation": ""})
         monkeypatch.setattr("anchorregistry.client.get_by_arid", lambda ar_id, **kw: record_map[ar_id])
         monkeypatch.setattr("anchorregistry.client.get_by_tree", lambda *a, **kw: [root_record, void_record])
 
@@ -377,6 +380,23 @@ class TestAuthenticateTreeUnit:
         assert result["anchors_verified"] == 1
         assert result["governance_count"] == 1
         assert result["anchor_count"] == 2
+
+    def test_authenticate_tree_sealed_returns_early(self, monkeypatch):
+        from anchorregistry import authenticate_tree
+
+        token = "0x" + "ab" * 32
+        root_ar_id = "AR-2026-SealXX"
+        tree_id = self._make_tree_id(token, root_ar_id)
+        root_record = self._make_record(root_ar_id, token, tree_id)
+
+        monkeypatch.setattr("anchorregistry.client.is_sealed", lambda *a, **kw: {"sealed": True, "continuation": "AR-2026-NewRoot"})
+        monkeypatch.setattr("anchorregistry.client.get_by_arid", lambda *a, **kw: root_record)
+
+        result = authenticate_tree(token, root_ar_id)
+        assert result["authenticated"] is False
+        assert result["sealed"] is True
+        assert result["continuation"] == "AR-2026-NewRoot"
+        assert "sealed" in result["message"].lower()
 
 
 # NOTE: ANCHOR_OWNERSHIP_TOKEN must be a 0x-prefixed bytes32 hex string (keccak256
