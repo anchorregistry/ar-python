@@ -267,6 +267,15 @@ Integration tests in `test_client.py` are automatically skipped when `SEPOLIA_RP
 
 ---
 
+## References
+
+The cryptographic commitment scheme and security proofs underlying this implementation
+are formally described in:
+
+**Trustless Provenance Trees: A Game-Theoretic Framework for Operator-Gated Blockchain Registries**
+Ian C. Moore — *arXiv:2604.03434 [cs.GT], April 2026*
+https://arxiv.org/abs/2604.03434
+
 ## Status
 
 > Alpha. Core library under active development against Sepolia testnet. API surface stable per spec. Not yet published to PyPI.
