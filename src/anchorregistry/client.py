@@ -417,12 +417,47 @@ def authenticate_anchor(
     }
 
 
+def is_sealed(
+    root_ar_id: str,
+    rpc_url: str | None = None,
+) -> dict[str, Any]:
+    """Check if a tree root has been sealed on-chain.
+
+    Parameters
+    ----------
+    root_ar_id:
+        AR-ID of the tree root anchor.
+    rpc_url:
+        Optional RPC URL override.
+
+    Returns
+    -------
+    dict[str, Any]
+        Result dict with keys:
+
+        - ``sealed`` — bool: True if the tree root is sealed.
+        - ``continuation`` — str: new tree root if set, empty string otherwise.
+    """
+    w3, contract, _ = _connect(rpc_url=rpc_url)
+    sealed = contract.functions.isSealed(root_ar_id).call()
+    continuation = ""
+    if sealed:
+        continuation = contract.functions.sealContinuation(root_ar_id).call()
+    return {
+        "sealed": sealed,
+        "continuation": continuation,
+    }
+
+
 def authenticate_tree(
     ownership_token: str,
     root_ar_id: str,
     rpc_url: str | None = None,
 ) -> dict[str, Any]:
     """Authenticate a full tree by verifying ownership and all anchor commitments.
+
+    If the tree is sealed, returns immediately with sealed status — the tree
+    is authentic and complete, no further verification needed.
 
     Two-layer verification:
 
@@ -452,6 +487,8 @@ def authenticate_tree(
         Result dict with keys:
 
         - ``authenticated`` — bool: True if Layer 1 passes and ``anchors_failed == 0``.
+        - ``sealed`` — bool: True if the tree is sealed.
+        - ``continuation`` — str: new tree root (if sealed with continuation).
         - ``tree_id`` — str: human-readable treeId from the root anchor.
         - ``root_ar_id`` — str: the root AR-ID that was checked.
         - ``anchor_count`` — int: total anchors in the tree.
@@ -472,6 +509,28 @@ def authenticate_tree(
     >>> result["authenticated"]
     True
     """
+    # Check sealed status first — sealed trees are authentic and complete.
+    seal_status = is_sealed(root_ar_id, rpc_url=rpc_url)
+    if seal_status["sealed"]:
+        root_record = get_by_arid(root_ar_id, rpc_url=rpc_url)
+        return {
+            "authenticated": False,
+            "sealed": True,
+            "continuation": seal_status["continuation"],
+            "tree_id": root_record["tree_id"],
+            "root_ar_id": root_ar_id,
+            "anchor_count": 0,
+            "anchors_verified": 0,
+            "anchors_failed": 0,
+            "governance_count": 0,
+            "message": (
+                "Tree sealed — record authentic and complete. "
+                f"Continued at {seal_status['continuation']}"
+                if seal_status["continuation"]
+                else "Tree sealed — record authentic and complete."
+            ),
+        }
+
     root_record = get_by_arid(root_ar_id, rpc_url=rpc_url)
     tree_id = root_record["tree_id"]
 
@@ -485,6 +544,8 @@ def authenticate_tree(
     if not layer1_pass:
         return {
             "authenticated": False,
+            "sealed": False,
+            "continuation": "",
             "tree_id": tree_id,
             "root_ar_id": root_ar_id,
             "anchor_count": 0,
@@ -511,6 +572,8 @@ def authenticate_tree(
 
     return {
         "authenticated": anchors_failed == 0,
+        "sealed": False,
+        "continuation": "",
         "tree_id": tree_id,
         "root_ar_id": root_ar_id,
         "anchor_count": len(tree_records),

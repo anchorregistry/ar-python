@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: BUSL-1.1
-"""ArtifactType enum — 23 types matching the on-chain ArtifactType enum."""
+"""ArtifactType enum — 24 types matching the on-chain ArtifactType enum."""
 
 from enum import IntEnum
 
 
 class ArtifactType(IntEnum):
-    """Twenty-three artifact types in eight logical groups."""
+    """Twenty-four artifact types in eight logical groups."""
 
     # ── CONTENT (0-11) ────────────────────────────────────────────────
     CODE = 0
@@ -32,16 +32,17 @@ class ArtifactType(IntEnum):
     ENTITY = 15
     PROOF = 16
 
-    # ── SELF-SERVICE (17) ─────────────────────────────────────────────
-    RETRACTION = 17
+    # ── SELF-SERVICE (17-18) ──────────────────────────────────────────
+    SEAL = 17
+    RETRACTION = 18
 
-    # ── REVIEW (18-20) ────────────────────────────────────────────────
-    REVIEW = 18
-    VOID = 19
-    AFFIRMED = 20
+    # ── REVIEW (19-21) ────────────────────────────────────────────────
+    REVIEW = 19
+    VOID = 20
+    AFFIRMED = 21
 
-    # ── BILLING (21) ──────────────────────────────────────────────────
-    ACCOUNT = 21
+    # ── BILLING (22) ──────────────────────────────────────────────────
+    ACCOUNT = 22
 
-    # ── CATCH-ALL (22) ────────────────────────────────────────────────
-    OTHER = 22
+    # ── CATCH-ALL (23) ────────────────────────────────────────────────
+    OTHER = 23

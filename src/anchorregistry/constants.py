@@ -9,8 +9,8 @@ NETWORKS = {
         "rpc_url": "https://mainnet.base.org",
     },
     "sepolia": {
-        "contract_address": "0x9E1F48D3C46bc69a540d16511FaA76Add25A8451",
-        "deploy_block": 10575629,  # tokenCommitment contract deploy block (Sepolia)
+        "contract_address": "0xE772B7f4eC4a92109b8b892Add205ede7c850DBa",
+        "deploy_block": 10575629,  # SEAL contract deploy block (Sepolia)
         "chain_id": 11155111,
         "rpc_url": "https://rpc.sepolia.org",
     },

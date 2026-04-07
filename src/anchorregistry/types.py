@@ -7,7 +7,7 @@ Imported by ar-api/blockchain.py.
 
 from anchorregistry.enums import ArtifactType
 
-# Index → name mapping for all 23 artifact types
+# Index → name mapping for all 24 artifact types
 ARTIFACT_TYPE_MAP: dict[int, str] = {t.value: t.name for t in ArtifactType}
 
 # Type-specific data field names (snake_case), keyed by ArtifactType value.

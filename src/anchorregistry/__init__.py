@@ -19,6 +19,7 @@ from anchorregistry.client import (
     watermark,
     authenticate_anchor,
     authenticate_tree,
+    is_sealed,
 )
 from anchorregistry.config import configure
 from anchorregistry.utils import to_dataframe, is_user_initiated
@@ -37,6 +38,7 @@ __all__ = [
     "watermark",
     "authenticate_anchor",
     "authenticate_tree",
+    "is_sealed",
     "configure",
     "to_dataframe",
     "is_user_initiated",

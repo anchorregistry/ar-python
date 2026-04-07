@@ -26,6 +26,35 @@ READ_ABI = [
             {"indexed": False, "internalType": "bytes32",           "name": "tokenCommitment",  "type": "bytes32"},
         ],
     },
+    # ── Sealed event ───────────────────────────────────────────────────
+    {
+        "anonymous": False,
+        "name": "Sealed",
+        "type": "event",
+        "inputs": [
+            {"indexed": True,  "internalType": "string",  "name": "arId",            "type": "string"},
+            {"indexed": False, "internalType": "string",  "name": "newTreeRoot",      "type": "string"},
+            {"indexed": False, "internalType": "string",  "name": "reason",           "type": "string"},
+            {"indexed": False, "internalType": "uint256", "name": "sealedAtBlock",    "type": "uint256"},
+            {"indexed": False, "internalType": "bytes32", "name": "tokenCommitment",  "type": "bytes32"},
+        ],
+    },
+    # ── isSealed(arId) → bool ────────────────────────────────────────
+    {
+        "type": "function",
+        "name": "isSealed",
+        "stateMutability": "view",
+        "inputs":  [{"internalType": "string", "name": "", "type": "string"}],
+        "outputs": [{"internalType": "bool",   "name": "", "type": "bool"}],
+    },
+    # ── sealContinuation(arId) → string ──────────────────────────────
+    {
+        "type": "function",
+        "name": "sealContinuation",
+        "stateMutability": "view",
+        "inputs":  [{"internalType": "string", "name": "", "type": "string"}],
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+    },
     # ── registered(arId) → bool ───────────────────────────────────────
     {
         "type": "function",
