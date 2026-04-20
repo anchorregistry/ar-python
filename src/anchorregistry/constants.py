@@ -36,10 +36,13 @@ NETWORKS = {
 }
 
 # Named AnchorRegistry deployment addresses. Importable so call sites read as
-# `contract_address=V1_BASE_SEPOLIA` instead of bare hex strings.
-V1_BASE_SEPOLIA   = "0xb0435faa6deedc1cb6a809008516fe4f4b094f76"
-V1_1_BASE_SEPOLIA = "0x1a4a7238d65ce7ed0a2fd65b891290be5af622a8"
-V1_ETH_SEPOLIA    = "0xe772b7f4ec4a92109b8b892add205ede7c850dba"
+# `contract_address=V1A_BASE_SEPOLIA` instead of bare hex strings.
+# Naming convention: V<major><iteration_letter>_<NETWORK> — V1A is the first
+# V1-series deployment, V1B the next iteration within V1, etc. When the
+# major version changes, restart at V2A, V2B, …
+V1A_BASE_SEPOLIA = "0xb0435faa6deedc1cb6a809008516fe4f4b094f76"
+V1B_BASE_SEPOLIA = "0x1a4a7238d65ce7ed0a2fd65b891290be5af622a8"
+V1A_ETH_SEPOLIA  = "0xe772b7f4ec4a92109b8b892add205ede7c850dba"
 
 # Known AnchorRegistry deployments → their deploy block.
 # Looked up by configure() when the caller passes contract_address but omits
@@ -48,9 +51,9 @@ V1_ETH_SEPOLIA    = "0xe772b7f4ec4a92109b8b892add205ede7c850dba"
 # case-insensitive lookup. Callers deploying their own fork can still pass
 # deploy_block=... explicitly.
 KNOWN_DEPLOYMENTS: dict[str, int] = {
-    V1_BASE_SEPOLIA:   40223296,   # Base Sepolia V1 (historical demo anchors)
-    V1_1_BASE_SEPOLIA: 40470850,   # Base Sepolia V1.1 (Phase 6: AFFIRMED fix + importAnchor)
-    V1_ETH_SEPOLIA:    10575629,   # Ethereum Sepolia (original)
+    V1A_BASE_SEPOLIA: 40223296,    # Base Sepolia V1A (historical demo anchors)
+    V1B_BASE_SEPOLIA: 40470850,    # Base Sepolia V1B (Phase 6: AFFIRMED fix + importAnchor)
+    V1A_ETH_SEPOLIA:  10575629,    # Ethereum Sepolia V1A (original)
 }
 
 # Active-network values — updated by config.configure() when the caller
