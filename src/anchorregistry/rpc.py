@@ -12,7 +12,7 @@ from typing import Any
 from web3 import Web3
 
 from anchorregistry.abi import READ_ABI
-from anchorregistry.config import _resolve_config
+from anchorregistry.config import _resolve_config, _resolve_deployments
 
 # ── constants ────────────────────────────────────────────────────────
 # Chunk size for eth_getLogs fallback. 10k clears every public Base-Sepolia
@@ -44,6 +44,34 @@ def _connect(rpc_url: str | None = None) -> tuple[Web3, Any, int | None]:
         address=Web3.to_checksum_address(addr), abi=READ_ABI
     )
     return w3, contract, deploy_block
+
+
+def _connect_all(rpc_url: str | None = None) -> list[tuple[Web3, Any, int | None, str]]:
+    """Return ``(w3, contract, deploy_block, contract_address)`` per deployment
+    on the active network.
+
+    Used by multi-deployment scanners (get_all, get_by_tree, get_by_registrant,
+    etc.) so anchors registered on any prior contract remain discoverable.
+    Iteration order is "newest first" per the deployments list in NETWORKS.
+
+    If the caller has set an explicit contract_address (via configure() or
+    the ANCHOR_REGISTRY_ADDRESS env var), the returned list collapses to a
+    single entry — explicit overrides do not fan out.
+    """
+    deployments, resolved_rpc = _resolve_deployments(rpc_url)
+
+    if resolved_rpc not in _w3_cache:
+        _w3_cache[resolved_rpc] = Web3(
+            Web3.HTTPProvider(resolved_rpc, request_kwargs={"timeout": 30})
+        )
+    w3 = _w3_cache[resolved_rpc]
+
+    out: list[tuple[Web3, Any, int | None, str]] = []
+    for dep in deployments:
+        addr = Web3.to_checksum_address(dep["contract_address"])
+        contract = w3.eth.contract(address=addr, abi=READ_ABI)
+        out.append((w3, contract, dep.get("deploy_block"), addr))
+    return out
 
 
 def _get_logs(

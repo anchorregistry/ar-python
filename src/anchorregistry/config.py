@@ -136,3 +136,56 @@ def _resolve_config(rpc_url: str | None = None) -> tuple[str, str, int | None]:
     )
 
     return addr, resolved_rpc, deploy_block
+
+
+def _resolve_deployments(
+    rpc_url: str | None = None,
+) -> tuple[list[dict], str]:
+    """Resolve the full deployment list and RPC URL for the active network.
+
+    Returns
+    -------
+    tuple[list[dict], str]
+        ``(deployments, rpc_url)`` where each deployment is a dict with keys
+        ``contract_address``, ``deploy_block``, ``label``. Ordered newest-first.
+
+    If the caller has set an explicit contract_address (via configure() or
+    the ``ANCHOR_REGISTRY_ADDRESS`` env var), the returned list is a
+    single-element override list — explicit addresses do not fan out to the
+    preset's deployment list.
+
+    Raises
+    ------
+    ConfigurationError
+        If no deployments can be resolved for the active network and no
+        explicit address is set.
+    """
+    preset = NETWORKS.get(_active_network, NETWORKS["base"])
+
+    resolved_rpc = (
+        rpc_url
+        or _explicit_rpc_url
+        or os.environ.get("BASE_RPC_URL")
+        or preset.get("rpc_url", "")
+    )
+
+    # Explicit override short-circuits the preset's deployment list.
+    override = _explicit_address or os.environ.get("ANCHOR_REGISTRY_ADDRESS")
+    if override:
+        deploy_block = (
+            _explicit_deploy_block
+            if _explicit_deploy_block is not None
+            else KNOWN_DEPLOYMENTS.get(override.lower())
+        )
+        return (
+            [{"contract_address": override, "deploy_block": deploy_block, "label": "override"}],
+            resolved_rpc,
+        )
+
+    deployments = preset.get("deployments") or []
+    if not deployments:
+        raise ConfigurationError(
+            f"No deployments configured for network {_active_network!r}. "
+            "Call configure(contract_address=...) or set ANCHOR_REGISTRY_ADDRESS."
+        )
+    return deployments, resolved_rpc

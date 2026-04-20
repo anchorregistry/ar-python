@@ -19,6 +19,7 @@ from anchorregistry.enums import ArtifactType
 from anchorregistry.exceptions import AnchorNotFoundError
 from anchorregistry.rpc import (
     _connect,
+    _connect_all,
     _fetch_anchor_data,
     _fetch_anchor_data_batch,
     _fetch_transactions_batch,
@@ -147,18 +148,20 @@ def get_by_arid(ar_id: str, rpc_url: str | None = None) -> dict[str, Any]:
     AnchorNotFoundError
         If the AR-ID does not exist on-chain.
     """
-    w3, contract, deploy_block = _connect(rpc_url)
+    # Iterate every deployment on the active network (newest first). importAnchor
+    # was removed in V1.1-final, so an AR-ID's event lives only on the contract
+    # where it was originally registered — this loop finds it there.
     topic = _build_topic(ar_id)
-    # AR-IDs are unique → only one matching log can exist. Tell _get_logs to
-    # stop scanning subsequent chunks once it finds the hit. Big win on
-    # public RPCs that cap eth_getLogs ranges (drpc.org → 26 chunks → 1).
-    logs = _get_logs(
-        w3, contract.address, deploy_block or 0, "latest",
-        topic_1=topic, early_exit_on_match=True,
-    )
-    if not logs:
-        raise AnchorNotFoundError(f"AR-ID not found on-chain: {ar_id}")
-    return _build_record(w3, contract, logs[0])
+    for w3, contract, deploy_block, addr in _connect_all(rpc_url):
+        logs = _get_logs(
+            w3, contract.address, deploy_block or 0, "latest",
+            topic_1=topic, early_exit_on_match=True,
+        )
+        if logs:
+            record = _build_record(w3, contract, logs[0])
+            record["contract_address"] = addr
+            return record
+    raise AnchorNotFoundError(f"AR-ID not found on any deployment: {ar_id}")
 
 
 def get_by_registrant(
@@ -180,12 +183,17 @@ def get_by_registrant(
     list[dict[str, Any]]
         List of two-level anchor records.
     """
-    w3, contract, deploy_block = _connect(rpc_url)
     topic = _address_topic(wallet_address)
-    logs = _get_logs(
-        w3, contract.address, deploy_block or 0, "latest", topic_2=topic
-    )
-    return _build_records(w3, contract, logs)
+    merged: dict[str, dict[str, Any]] = {}
+    for w3, contract, deploy_block, addr in _connect_all(rpc_url):
+        logs = _get_logs(
+            w3, contract.address, deploy_block or 0, "latest", topic_2=topic
+        )
+        for record in _build_records(w3, contract, logs):
+            record.setdefault("contract_address", addr)
+            # newest-first iteration → first write wins on duplicate AR-IDs
+            merged.setdefault(record["ar_id"], record)
+    return list(merged.values())
 
 
 def get_by_tree(
@@ -207,12 +215,16 @@ def get_by_tree(
     list[dict[str, Any]]
         List of two-level anchor records.
     """
-    w3, contract, deploy_block = _connect(rpc_url)
     topic = _build_topic(tree_id_plain)
-    logs = _get_logs(
-        w3, contract.address, deploy_block or 0, "latest", topic_3=topic
-    )
-    return _build_records(w3, contract, logs)
+    merged: dict[str, dict[str, Any]] = {}
+    for w3, contract, deploy_block, addr in _connect_all(rpc_url):
+        logs = _get_logs(
+            w3, contract.address, deploy_block or 0, "latest", topic_3=topic
+        )
+        for record in _build_records(w3, contract, logs):
+            record.setdefault("contract_address", addr)
+            merged.setdefault(record["ar_id"], record)
+    return list(merged.values())
 
 
 def get_by_type(
@@ -262,11 +274,15 @@ def get_all(
     list[dict[str, Any]]
         List of all two-level anchor records.
     """
-    w3, contract, deploy_block = _connect(rpc_url)
-    start = from_block if from_block is not None else (deploy_block or 0)
-    end = to_block if to_block is not None else "latest"
-    logs = _get_logs(w3, contract.address, start, end)
-    return _build_records(w3, contract, logs)
+    merged: dict[str, dict[str, Any]] = {}
+    for w3, contract, deploy_block, addr in _connect_all(rpc_url):
+        start = from_block if from_block is not None else (deploy_block or 0)
+        end   = to_block   if to_block   is not None else "latest"
+        logs = _get_logs(w3, contract.address, start, end)
+        for record in _build_records(w3, contract, logs):
+            record.setdefault("contract_address", addr)
+            merged.setdefault(record["ar_id"], record)
+    return list(merged.values())
 
 
 def which_contract(
@@ -497,15 +513,16 @@ def is_sealed(
         - ``sealed`` — bool: True if the tree root is sealed.
         - ``continuation`` — str: new tree root if set, empty string otherwise.
     """
-    w3, contract, _ = _connect(rpc_url=rpc_url)
-    sealed = contract.functions.isSealed(root_ar_id).call()
-    continuation = ""
-    if sealed:
-        continuation = contract.functions.sealContinuation(root_ar_id).call()
-    return {
-        "sealed": sealed,
-        "continuation": continuation,
-    }
+    # Sealed state can live on any deployment in the network — check all,
+    # newest first, return on first hit.
+    for w3, contract, _deploy_block, _addr in _connect_all(rpc_url):
+        if contract.functions.isSealed(root_ar_id).call():
+            try:
+                continuation = contract.functions.sealContinuation(root_ar_id).call()
+            except Exception:
+                continuation = ""
+            return {"sealed": True, "continuation": continuation}
+    return {"sealed": False, "continuation": ""}
 
 
 def authenticate_tree(
