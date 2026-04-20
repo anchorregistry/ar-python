@@ -32,6 +32,9 @@ from anchorregistry.constants import (
     BASE_RPC,
     BASE_SEPOLIA_RPC,
     ETHEREUM_SEPOLIA_RPC,
+    V1_BASE_SEPOLIA,
+    V1_1_BASE_SEPOLIA,
+    V1_ETH_SEPOLIA,
     KNOWN_DEPLOYMENTS,
 )
 from anchorregistry.exceptions import AnchorNotFoundError, ConfigurationError
@@ -58,6 +61,9 @@ __all__ = [
     "BASE_RPC",
     "BASE_SEPOLIA_RPC",
     "ETHEREUM_SEPOLIA_RPC",
+    "V1_BASE_SEPOLIA",
+    "V1_1_BASE_SEPOLIA",
+    "V1_ETH_SEPOLIA",
     "KNOWN_DEPLOYMENTS",
     "AnchorNotFoundError",
     "ConfigurationError",
