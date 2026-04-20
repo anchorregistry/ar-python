@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 
 import anchorregistry.constants as _constants
-from anchorregistry.constants import NETWORKS
+from anchorregistry.constants import NETWORKS, KNOWN_DEPLOYMENTS
 from anchorregistry.exceptions import ConfigurationError
 
 # ── module-level state ────────────────────────────────────────────────
@@ -123,7 +123,16 @@ def _resolve_config(rpc_url: str | None = None) -> tuple[str, str, int | None]:
         or preset.get("rpc_url", "")
     )
 
-    # Deploy block: explicit from configure() only. Falls back to None
-    # which causes scans to start at block 0 (may be rejected by RPCs that
-    # cap block range — callers running get_all should always supply one).
-    return addr, resolved_rpc, _explicit_deploy_block
+    # Deploy block: explicit > KNOWN_DEPLOYMENTS lookup by address > None.
+    # Users who point at a contract ar-python ships a deploy block for (V1,
+    # V1.1, the original Ethereum Sepolia deployment) don't need to memorise
+    # the block number. Unknown contracts fall back to None, which means
+    # "scan from 0" — works on RPCs without range caps, breaks on most
+    # public ones. Such callers should supply deploy_block=... explicitly.
+    deploy_block = (
+        _explicit_deploy_block
+        if _explicit_deploy_block is not None
+        else KNOWN_DEPLOYMENTS.get(addr.lower())
+    )
+
+    return addr, resolved_rpc, deploy_block

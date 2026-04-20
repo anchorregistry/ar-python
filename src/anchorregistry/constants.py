@@ -27,6 +27,21 @@ NETWORKS = {
     },
 }
 
+# Known AnchorRegistry deployments → their deploy block.
+# Looked up by configure() when the caller passes contract_address but omits
+# deploy_block, so users don't have to memorize block numbers for the
+# contracts ar-python officially supports. Addresses are lowercased for
+# case-insensitive lookup. Callers deploying their own fork can still pass
+# deploy_block=... explicitly.
+KNOWN_DEPLOYMENTS: dict[str, int] = {
+    # Base Sepolia — V1 (historical demo anchors live here)
+    "0xb0435faa6deedc1cb6a809008516fe4f4b094f76": 40223296,
+    # Base Sepolia — V1.1 (Phase 6: AFFIRMED fix + importAnchor)
+    "0x1a4a7238d65ce7ed0a2fd65b891290be5af622a8": 40470850,
+    # Ethereum Sepolia — original deployment
+    "0xe772b7f4ec4a92109b8b892add205ede7c850dba": 10575629,
+}
+
 # Active-network values — updated by config.configure() when the caller
 # supplies a contract_address / deploy_block / rpc_url. Left empty until
 # configure() runs so callers can introspect the live connection settings:
