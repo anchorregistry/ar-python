@@ -54,6 +54,7 @@ def _get_logs(
     topic_1: str | None = None,
     topic_2: str | None = None,
     topic_3: str | None = None,
+    early_exit_on_match: bool = False,
 ) -> list[dict]:
     """Fetch raw Anchored event logs via ``eth_getLogs``.
 
@@ -73,6 +74,13 @@ def _get_logs(
         Registrant address zero-padded to 32 bytes, or ``None``.
     topic_3:
         Keccak256 hash of treeId (indexed topic 3), or ``None``.
+    early_exit_on_match:
+        If True and we're in chunked mode, stop scanning the moment any
+        chunk returns a non-empty result. Use for queries that only
+        consume the first matching log (e.g. ``get_by_arid``); leave False
+        for bulk scans (``get_all`` / ``get_by_registrant`` / ``get_by_tree``).
+        On dRPC's 10k-block cap, this turns a 26-call scan into a 1-call
+        scan when the match lands in an early chunk.
 
     Returns
     -------
@@ -126,6 +134,8 @@ def _get_logs(
             }
         )
         all_logs.extend(chunk_logs)
+        if early_exit_on_match and all_logs:
+            break
         chunk_start = chunk_end + 1
     return all_logs
 

@@ -148,8 +148,12 @@ def get_by_arid(ar_id: str, rpc_url: str | None = None) -> dict[str, Any]:
     """
     w3, contract, deploy_block = _connect(rpc_url)
     topic = _build_topic(ar_id)
+    # AR-IDs are unique → only one matching log can exist. Tell _get_logs to
+    # stop scanning subsequent chunks once it finds the hit. Big win on
+    # public RPCs that cap eth_getLogs ranges (drpc.org → 26 chunks → 1).
     logs = _get_logs(
-        w3, contract.address, deploy_block or 0, "latest", topic_1=topic
+        w3, contract.address, deploy_block or 0, "latest",
+        topic_1=topic, early_exit_on_match=True,
     )
     if not logs:
         raise AnchorNotFoundError(f"AR-ID not found on-chain: {ar_id}")
