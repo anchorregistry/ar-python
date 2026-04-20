@@ -28,6 +28,12 @@ NETWORKS = {
 }
 
 # Active-network values — updated by config.configure() when the caller
-# supplies a contract_address and/or deploy_block. Left empty until then.
+# supplies a contract_address / deploy_block / rpc_url. Left empty until
+# configure() runs so callers can introspect the live connection settings:
+#
+#   from anchorregistry.constants import CONTRACT_ADDRESS, DEPLOY_BLOCK, RPC_URL
+#   configure(network="base-sepolia", contract_address="0x…", deploy_block=…)
+#   print(CONTRACT_ADDRESS, DEPLOY_BLOCK, RPC_URL)
 CONTRACT_ADDRESS: str = ""
 DEPLOY_BLOCK: int | None = None
+RPC_URL: str = ""

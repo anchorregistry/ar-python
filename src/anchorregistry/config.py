@@ -74,11 +74,18 @@ def configure(
     # ConfigurationError if no address is set yet — callers may configure()
     # with network only and supply the address later via env var.
     try:
-        addr, _, db = _resolve_config()
+        addr, resolved_rpc, db = _resolve_config()
         _constants.CONTRACT_ADDRESS = addr
         _constants.DEPLOY_BLOCK     = db
+        _constants.RPC_URL          = resolved_rpc
     except ConfigurationError:
-        pass
+        # Still surface the RPC even without an address so users can see
+        # which endpoint they'd be hitting.
+        _constants.RPC_URL = (
+            _explicit_rpc_url
+            or os.environ.get("BASE_RPC_URL")
+            or NETWORKS.get(_active_network, {}).get("rpc_url", "")
+        )
 
 
 def _resolve_config(rpc_url: str | None = None) -> tuple[str, str, int | None]:
