@@ -27,14 +27,26 @@ def _reset_config():
 class TestConfigure:
     """Tests for configure()."""
 
-    def test_sepolia_network(self):
-        configure(network="sepolia")
+    def test_sepolia_network(self, monkeypatch):
+        # v0.1.8+ ships no default address per-network; caller must supply it.
+        monkeypatch.delenv("ANCHOR_REGISTRY_ADDRESS", raising=False)
+        configure(
+            network="sepolia",
+            contract_address="0xE772B7f4eC4a92109b8b892Add205ede7c850DBa",
+            deploy_block=10575629,
+        )
         addr, rpc, deploy = _resolve_config()
-        assert addr == NETWORKS["sepolia"]["contract_address"]
-        assert deploy == NETWORKS["sepolia"]["deploy_block"]
+        assert addr == "0xE772B7f4eC4a92109b8b892Add205ede7c850DBa"
+        assert deploy == 10575629
 
-    def test_base_network(self):
-        configure(network="base", contract_address="0x1234567890abcdef1234567890abcdef12345678")
+    def test_base_network(self, monkeypatch):
+        # Clear BASE_RPC_URL so the assertion against the preset RPC is
+        # deterministic under a developer env that has a real provider set.
+        monkeypatch.delenv("BASE_RPC_URL", raising=False)
+        configure(
+            network="base",
+            contract_address="0x1234567890abcdef1234567890abcdef12345678",
+        )
         addr, rpc, deploy = _resolve_config()
         assert addr == "0x1234567890abcdef1234567890abcdef12345678"
         assert rpc == NETWORKS["base"]["rpc_url"]
@@ -61,7 +73,12 @@ class TestResolveConfig:
     def test_priority_order(self, monkeypatch):
         """rpc_url param > configure() > env var > preset."""
         monkeypatch.setenv("BASE_RPC_URL", "https://env-rpc.com")
-        configure(network="sepolia", rpc_url="https://configured-rpc.com")
+        # Contract address required since v0.1.8 — pass through configure
+        configure(
+            network="sepolia",
+            contract_address="0xDEADBEEFc39a17e36ba4a6b4d238ff944bacb478",
+            rpc_url="https://configured-rpc.com",
+        )
 
         # Parameter takes highest priority
         _, rpc, _ = _resolve_config(rpc_url="https://param-rpc.com")
