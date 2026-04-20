@@ -15,7 +15,11 @@ NETWORKS = {
     },
     "base-sepolia": {
         "chain_id": 84532,
-        "rpc_url":  "https://sepolia.base.org",
+        # drpc.org accepts 10k-block eth_getLogs chunks (matches our default
+        # chunk size below). sepolia.base.org rejects wider ranges AND has a
+        # silent-gap bug on historical ranges; publicnode.com is currently
+        # unreliable (503s). Override via rpc_url= for authenticated RPCs.
+        "rpc_url":  "https://base-sepolia.drpc.org",
     },
     "sepolia": {
         "chain_id": 11155111,

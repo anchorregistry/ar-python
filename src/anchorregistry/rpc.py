@@ -15,7 +15,10 @@ from anchorregistry.abi import READ_ABI
 from anchorregistry.config import _resolve_config
 
 # ── constants ────────────────────────────────────────────────────────
-_DEFAULT_CHUNK_SIZE = 50_000
+# Chunk size for eth_getLogs fallback. 10k clears every public Base-Sepolia
+# RPC we've tested (drpc.org, sepolia.base.org at its best, publicnode when up).
+# Authenticated RPCs hit the fast path above and skip chunking entirely.
+_DEFAULT_CHUNK_SIZE = 10_000
 
 # ── connection cache ──────────────────────────────────────────────────
 _w3_cache: dict[str, Web3] = {}
@@ -96,25 +99,20 @@ def _get_logs(
         "topics": topics,
     }
 
-    # Fast path: single call works on generous RPCs.
-    try:
-        return list(w3.eth.get_logs(filter_params))
-    except Exception as exc:
-        msg = str(exc).lower()
-        if not any(
-            needle in msg
-            for needle in (
-                "block range", "block_range", "exceed",
-                "query returned more than", "payload too large", "413",
-                "timed out", "timeout",
-            )
-        ):
-            raise
-
-    # Chunked fallback for RPCs with block-range limits.
+    # Range-aware dispatch: if the whole span fits in one chunk we make a
+    # single call (works on every RPC). Otherwise go straight to chunked.
+    # Avoids the whack-a-mole of matching provider-specific error strings
+    # (Infura says "block range", Alchemy says "exceed", dRPC says "400
+    # Bad Request", sepolia.base.org says "413"…) — a wide range is
+    # going to fail on at least one of those, so we never bet on it.
     resolved_end = (
         w3.eth.block_number if to_block == "latest" else int(to_block)
     )
+    span = resolved_end - from_block + 1
+
+    if span <= _DEFAULT_CHUNK_SIZE:
+        return list(w3.eth.get_logs(filter_params))
+
     all_logs: list[dict] = []
     chunk_start = from_block
     while chunk_start <= resolved_end:
