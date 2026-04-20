@@ -56,6 +56,15 @@ KNOWN_DEPLOYMENTS: dict[str, int] = {
     V1A_ETH_SEPOLIA:  10575629,    # Ethereum Sepolia V1A (original)
 }
 
+# Which NETWORKS key each known deployment belongs to. Used by
+# client.which_contract() to filter candidates by chain so we don't
+# query an Ethereum Sepolia address against a Base Sepolia RPC.
+DEPLOYMENT_NETWORKS: dict[str, str] = {
+    V1A_BASE_SEPOLIA: "base-sepolia",
+    V1B_BASE_SEPOLIA: "base-sepolia",
+    V1A_ETH_SEPOLIA:  "sepolia",
+}
+
 # Active-network values — updated by config.configure() when the caller
 # supplies a contract_address / deploy_block / rpc_url. Left empty until
 # configure() runs so callers can introspect the live connection settings:

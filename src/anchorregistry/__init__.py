@@ -20,6 +20,7 @@ from anchorregistry.client import (
     authenticate_anchor,
     authenticate_tree,
     is_sealed,
+    which_contract,
 )
 from anchorregistry.config import configure
 from anchorregistry.utils import to_dataframe, is_user_initiated
@@ -50,6 +51,7 @@ __all__ = [
     "authenticate_anchor",
     "authenticate_tree",
     "is_sealed",
+    "which_contract",
     "configure",
     "to_dataframe",
     "is_user_initiated",

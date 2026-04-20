@@ -13,6 +13,7 @@ from eth_hash.auto import keccak
 
 from eth_abi import decode as abi_decode
 
+from anchorregistry.constants import KNOWN_DEPLOYMENTS, DEPLOYMENT_NETWORKS
 from anchorregistry.decoder import _decode_data_fields, _decode_event
 from anchorregistry.enums import ArtifactType
 from anchorregistry.exceptions import AnchorNotFoundError
@@ -266,6 +267,60 @@ def get_all(
     end = to_block if to_block is not None else "latest"
     logs = _get_logs(w3, contract.address, start, end)
     return _build_records(w3, contract, logs)
+
+
+def which_contract(
+    ar_id: str,
+    network: str | None = None,
+    rpc_url: str | None = None,
+) -> str | None:
+    """Find which known AnchorRegistry deployment holds an AR-ID.
+
+    Probes every entry in KNOWN_DEPLOYMENTS that belongs to *network* (newest
+    first by dict insertion order — V1B before V1A, etc.) and returns the
+    contract address that matches. Each probe is a single early-exit
+    eth_getLogs, so the worst case is one RPC call per known deployment on
+    the network.
+
+    Side effect: on a hit, ``configure()`` is called with the matching
+    contract so subsequent operations in the session naturally target it.
+    On a miss, configuration is left at the last probed contract — caller
+    should re-configure() if that matters.
+
+    Parameters
+    ----------
+    ar_id:
+        The AR-ID to locate (e.g. ``"AR-2026-Pvdp0W5"``).
+    network:
+        Network preset name to filter candidates by. Defaults to the
+        currently-active network.
+    rpc_url:
+        Optional RPC URL override. Falls back to the network preset.
+
+    Returns
+    -------
+    str | None
+        Lower-case contract address holding the anchor, or ``None`` if the
+        AR-ID isn't on any known deployment for the network.
+    """
+    # Local imports to avoid an import cycle at module load (config imports
+    # from client via the public API surface in __init__).
+    from anchorregistry.config import _active_network, configure
+
+    target_net = network or _active_network
+    candidates = [
+        addr for addr in KNOWN_DEPLOYMENTS
+        if DEPLOYMENT_NETWORKS.get(addr) == target_net
+    ]
+
+    for addr in candidates:
+        configure(network=target_net, contract_address=addr, rpc_url=rpc_url)
+        try:
+            get_by_arid(ar_id)
+            return addr
+        except AnchorNotFoundError:
+            continue
+    return None
 
 
 def verify(
