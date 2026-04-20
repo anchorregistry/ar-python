@@ -8,22 +8,30 @@ assumption about which contract deployment you want to read. This keeps
 the library decoupled from AnchorRegistry's deployment history.
 """
 
+# Default public RPC endpoints per network. Exposed as module-level constants
+# so callers can import, inspect, and pass them explicitly into configure():
+#
+#   from anchorregistry import configure, BASE_SEPOLIA_RPC
+#   configure(network="base-sepolia", contract_address="0x…", rpc_url=BASE_SEPOLIA_RPC)
+#
+# Override by passing your own rpc_url= (Infura / Alchemy / self-hosted) when
+# you need higher rate limits or faster single-call scans.
+BASE_RPC             = "https://mainnet.base.org"
+BASE_SEPOLIA_RPC     = "https://base-sepolia.drpc.org"   # drpc.org accepts 10k-block chunks; sepolia.base.org has a silent-gap bug on historical ranges
+ETHEREUM_SEPOLIA_RPC = "https://rpc.sepolia.org"
+
 NETWORKS = {
     "base": {
         "chain_id": 8453,
-        "rpc_url":  "https://mainnet.base.org",
+        "rpc_url":  BASE_RPC,
     },
     "base-sepolia": {
         "chain_id": 84532,
-        # drpc.org accepts 10k-block eth_getLogs chunks (matches our default
-        # chunk size below). sepolia.base.org rejects wider ranges AND has a
-        # silent-gap bug on historical ranges; publicnode.com is currently
-        # unreliable (503s). Override via rpc_url= for authenticated RPCs.
-        "rpc_url":  "https://base-sepolia.drpc.org",
+        "rpc_url":  BASE_SEPOLIA_RPC,
     },
     "sepolia": {
         "chain_id": 11155111,
-        "rpc_url":  "https://rpc.sepolia.org",
+        "rpc_url":  ETHEREUM_SEPOLIA_RPC,
     },
 }
 

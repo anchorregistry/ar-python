@@ -25,7 +25,15 @@ from anchorregistry.config import configure
 from anchorregistry.utils import to_dataframe, is_user_initiated
 from anchorregistry.types import ARTIFACT_TYPE_MAP
 from anchorregistry.abi import READ_ABI
-from anchorregistry.constants import CONTRACT_ADDRESS, DEPLOY_BLOCK
+from anchorregistry.constants import (
+    CONTRACT_ADDRESS,
+    DEPLOY_BLOCK,
+    RPC_URL,
+    BASE_RPC,
+    BASE_SEPOLIA_RPC,
+    ETHEREUM_SEPOLIA_RPC,
+    KNOWN_DEPLOYMENTS,
+)
 from anchorregistry.exceptions import AnchorNotFoundError, ConfigurationError
 
 __all__ = [
@@ -46,6 +54,11 @@ __all__ = [
     "READ_ABI",
     "CONTRACT_ADDRESS",
     "DEPLOY_BLOCK",
+    "RPC_URL",
+    "BASE_RPC",
+    "BASE_SEPOLIA_RPC",
+    "ETHEREUM_SEPOLIA_RPC",
+    "KNOWN_DEPLOYMENTS",
     "AnchorNotFoundError",
     "ConfigurationError",
 ]
